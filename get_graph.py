@@ -47,6 +47,7 @@ def extract_pdf_text(url):
 
 resume_texts = [extract_pdf_text(m["resume_link"]) for m in members]
 ids = [m["id"] for m in members]
+names = [m["name"] for m in members]
 
 # --- Step 3: Vectorize + compute cosine similarity ---
 vectorizer = TfidfVectorizer(stop_words='english')
@@ -61,17 +62,12 @@ for i, j in itertools.combinations(range(len(members)), 2):
         edges.append({
             "from": ids[i],
             "to": ids[j],
-            "value": round(weight, 3),
+            "from_name": names[i],
+            "to_name": names[j],
+            "strength": round(weight, 3),
             "label": f"{round(weight, 2)}"
         })
 
-# --- Step 5: Save graph.json ---
-graph = {
-    "nodes": nodes,
-    "edges": edges
-}
-
-with open('graph.json', 'w', encoding='utf-8') as f:
-    json.dump(graph, f, indent=2)
-
-print("✅ Graph saved to graph.json")
+with open('edges.json', 'w', encoding='utf-8') as f:
+    json.dump(edges, f, indent=2)
+print("✅ Edges saved to edges.json")
