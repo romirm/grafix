@@ -3,38 +3,34 @@ import itertools
 import requests
 import fitz  # PyMuPDF
 from io import BytesIO
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer, util
 
-# Load member data from the json file
+# --- Step 1: Load member data from the JSON file ---
 with open('ktp_members.json', 'r', encoding='utf-8') as f:
     raw_data = json.load(f)
 
-# Parsing members
+# --- Step 2: Parse members into a list ---
 members = []
 for uid, data in raw_data.items():
     members.append({
         "id": uid,
-        "name": data.get("name", ""), # safer with .get in case it's missing
+        "name": data.get("name", ""),
         "profile_pic": data.get("profile_pic_link", ""),
-        "resume_link": data.get("resume_link", "") 
+        "resume_link": data.get("resume_link", "")
     })
 
-
-# Creating Nodes
+# --- Step 3: Create graph nodes from member info ---
 nodes = [{
     "name": m["name"],
     "image": m["profile_pic"],
     "shape": "circularImage"
 } for m in members]
 
-# Creating Nodes JSON
 with open('nodes.json', 'w', encoding='utf-8') as f:
     json.dump(nodes, f, indent=2)
 print("Nodes saved")
 
-
-# Downloading and extracting 
+# --- Step 4: Download and extract resume text ---
 def extract_pdf_text(url, name):
     try:
         response = requests.get(url)
@@ -42,32 +38,30 @@ def extract_pdf_text(url, name):
         with fitz.open(stream=response.content, filetype="pdf") as doc:
             return " ".join(page.get_text() for page in doc)
     except Exception as e:
-        print(f"Failed to read for {name}, {e}") # Tells which people have error with resume parsing
+        print(f"Failed to read for {name}, {e}")
         return ""
 
-# Extracts resume information as text and tells who has resume errors
 resume_texts = [extract_pdf_text(m["resume_link"], m["name"]) for m in members]
 names = [m["name"] for m in members]
 
+# --- Step 5: Use Sentence-BERT for semantic embeddings ---
+model = SentenceTransformer('all-mpnet-base-v2')
+processed_texts = [text.lower().strip() for text in resume_texts]
+resume_embeddings = model.encode(processed_texts, convert_to_tensor=True)
 
+# --- Step 6: Compute cosine similarity matrix ---
+similarity_matrix = util.pytorch_cos_sim(resume_embeddings, resume_embeddings).cpu().numpy()
 
-# --- Step 3: Vectorize + compute cosine similarity ---
-vectorizer = TfidfVectorizer(stop_words='english')
-tfidf_matrix = vectorizer.fit_transform(resume_texts)
-similarity_matrix = cosine_similarity(tfidf_matrix)
-
-# --- Step 4: Create edges based on similarity ---
+# --- Step 7: Create graph edges from similarity matrix ---
 edges = []
 for i, j in itertools.combinations(range(len(members)), 2):
     weight = similarity_matrix[i][j]
-    if weight > 0.10:  # tuning the threshold for graph density
+    if weight > 0.5:
         edges.append({
             "from": names[i],
             "to": names[j],
-            "weight": round(weight, 6),
+            "weight": round(float(weight), 6),
         })
-
-
 
 with open('edges.json', 'w', encoding='utf-8') as f:
     json.dump(edges, f, indent=2)
