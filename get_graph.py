@@ -15,9 +15,9 @@ members = []
 for uid, data in raw_data.items():
     members.append({
         "id": uid,
-        "name": data.get("name", "Unknown"),
+        "name": data.get("name", ""), # safer with .get in case it's missing
         "profile_pic": data.get("profile_pic_link", ""),
-        "resume_link": data.get("resume_link", "")  # safer with .get in case it's missing
+        "resume_link": data.get("resume_link", "") 
     })
 
 
@@ -34,7 +34,7 @@ with open('nodes.json', 'w', encoding='utf-8') as f:
 print("Nodes saved")
 
 
-# --- Step 2: Download and extract resume text ---
+# Downloading and extracting 
 def extract_pdf_text(url, name):
     try:
         response = requests.get(url)
@@ -42,12 +42,14 @@ def extract_pdf_text(url, name):
         with fitz.open(stream=response.content, filetype="pdf") as doc:
             return " ".join(page.get_text() for page in doc)
     except Exception as e:
-        print(f"Failed to read for {name} {url[:60]}...: {e}")
+        print(f"Failed to read for {name}, {e}") # Tells which people have error with resume parsing
         return ""
 
 # Extracts resume information as text and tells who has resume errors
 resume_texts = [extract_pdf_text(m["resume_link"], m["name"]) for m in members]
 names = [m["name"] for m in members]
+
+
 
 # --- Step 3: Vectorize + compute cosine similarity ---
 vectorizer = TfidfVectorizer(stop_words='english')
@@ -58,13 +60,15 @@ similarity_matrix = cosine_similarity(tfidf_matrix)
 edges = []
 for i, j in itertools.combinations(range(len(members)), 2):
     weight = similarity_matrix[i][j]
-    if weight > 0.10:  # tune threshold for graph density
+    if weight > 0.10:  # tuning the threshold for graph density
         edges.append({
             "from": names[i],
             "to": names[j],
-            "weight": round(weight, 5),
+            "weight": round(weight, 6),
         })
+
+
 
 with open('edges.json', 'w', encoding='utf-8') as f:
     json.dump(edges, f, indent=2)
-print("Edges added to edges.json")
+print("Edges saved")
