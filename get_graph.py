@@ -6,47 +6,47 @@ from io import BytesIO
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# --- Load the KTP member JSON ---
+# Load member data from the json file
 with open('ktp_members.json', 'r', encoding='utf-8') as f:
     raw_data = json.load(f)
 
-# --- Parse valid members ---
+# Parsing members
 members = []
 for uid, data in raw_data.items():
-    if not data.get("signed_up") or "resume_link" not in data:
-        continue
     members.append({
         "id": uid,
         "name": data.get("name", "Unknown"),
         "profile_pic": data.get("profile_pic_link", ""),
-        "resume_link": data["resume_link"]
+        "resume_link": data.get("resume_link", "")  # safer with .get in case it's missing
     })
 
-# --- Step 1: Create nodes ---
+
+# Creating Nodes
 nodes = [{
-    "id": m["id"],
-    "label": m["name"],
+    "name": m["name"],
     "image": m["profile_pic"],
     "shape": "circularImage"
 } for m in members]
 
+# Creating Nodes JSON
 with open('nodes.json', 'w', encoding='utf-8') as f:
     json.dump(nodes, f, indent=2)
-print("✅ Nodes saved to nodes.json")
+print("Nodes saved")
+
 
 # --- Step 2: Download and extract resume text ---
-def extract_pdf_text(url):
+def extract_pdf_text(url, name):
     try:
         response = requests.get(url)
         response.raise_for_status()
         with fitz.open(stream=response.content, filetype="pdf") as doc:
             return " ".join(page.get_text() for page in doc)
     except Exception as e:
-        print(f"⚠️ Failed to extract text from {url[:60]}...: {e}")
+        print(f"Failed to read for {name} {url[:60]}...: {e}")
         return ""
 
-resume_texts = [extract_pdf_text(m["resume_link"]) for m in members]
-ids = [m["id"] for m in members]
+# Extracts resume information as text and tells who has resume errors
+resume_texts = [extract_pdf_text(m["resume_link"], m["name"]) for m in members]
 names = [m["name"] for m in members]
 
 # --- Step 3: Vectorize + compute cosine similarity ---
@@ -58,16 +58,13 @@ similarity_matrix = cosine_similarity(tfidf_matrix)
 edges = []
 for i, j in itertools.combinations(range(len(members)), 2):
     weight = similarity_matrix[i][j]
-    if weight > 0.15:  # tune threshold for graph density
+    if weight > 0.10:  # tune threshold for graph density
         edges.append({
-            "from": ids[i],
-            "to": ids[j],
-            "from_name": names[i],
-            "to_name": names[j],
-            "strength": round(weight, 3),
-            "label": f"{round(weight, 2)}"
+            "from": names[i],
+            "to": names[j],
+            "weight": round(weight, 5),
         })
 
 with open('edges.json', 'w', encoding='utf-8') as f:
     json.dump(edges, f, indent=2)
-print("✅ Edges saved to edges.json")
+print("Edges added to edges.json")
