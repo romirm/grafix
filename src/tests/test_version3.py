@@ -1,6 +1,7 @@
 import fitz  # PyMuPDF
 import re
 import nltk
+import os
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from sentence_transformers import SentenceTransformer, util
@@ -111,4 +112,7 @@ def compare_resumes(path1, path2):
 # compare_resumes("Paari Dhanasekaran Resume.pdf", "Jain_Rishabh_Resume.pdf")
 
 if __name__ == "__main__":
-    compare_resumes("resume_paari.pdf", "resume_rishabh.pdf")
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    resume1 = os.path.join(base_dir, "resumes", "resume_john.pdf")
+    resume2 = os.path.join(base_dir, "resumes", "resume_steve.pdf")
+    compare_resumes(resume1, resume2)
