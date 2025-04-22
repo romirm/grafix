@@ -4,16 +4,15 @@ import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from sentence_transformers import SentenceTransformer, util
-from sklearn.feature_extraction.text import TfidfVectorizer
 from fuzzywuzzy import fuzz
 
 nltk.download('punkt')
 nltk.download('stopwords')
 stop_words = set(stopwords.words('english'))
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
-
-def extract_pdf_text(path):
+# === Extract Data from Resume ===
+def extract_text(path):
     try:
         with fitz.open(path) as doc:
             return " ".join(page.get_text() for page in doc)
@@ -21,95 +20,95 @@ def extract_pdf_text(path):
         print(f"Error reading {path}: {e}")
         return ""
 
-def preprocess(text):
-    text = re.sub(r'[^a-zA-Z\s]', '', text.lower())
-    tokens = word_tokenize(text)
-    return [t for t in tokens if t not in stop_words and len(t) > 1]
+# === Entity Extraction ===
+def extract_entities(text):
+    text_lower = text.lower()
 
-def extract_keywords(text, top_k=20):
-    vectorizer = TfidfVectorizer(stop_words='english', max_features=top_k)
-    X = vectorizer.fit_transform([text])
-    return vectorizer.get_feature_names_out()
+    # Graduation Year
+    grad_years = re.findall(r'\bjun(?:e|\.|)\s*(20\d{2})', text_lower)
 
-def extract_education_info(text):
-    grad_year = re.findall(r'expected\s+jun\.*\s*(20\d{2})', text.lower())
-    majors = re.findall(r'(computer science|mathematics|finance|electrical engineering|data science)', text.lower())
-    return {"grad_year": grad_year, "majors": majors}
+    # Majors
+    major_phrases = re.findall(r'bachelor.*?in ([a-z\s&]+)', text_lower)
+    flat_majors = []
+    for phrase in major_phrases:
+        parts = re.split(r'and|&|,', phrase)
+        flat_majors.extend([p.strip() for p in parts if p.strip()])
 
-def extract_affiliations(text):
-    # Extract capitalized multi-word orgs, e.g., Northwestern Financial Technologies
-    return re.findall(r'\b(?:[A-Z][a-z]+(?:\s[A-Z][a-z]+)+)', text)
+    # Coursework
+    courses = []
+    coursework_sections = re.findall(r'relevant coursework:?([\s\S]{0,300})', text_lower)
+    for section in coursework_sections:
+        raw_courses = re.split(r',|\n|\u2022|-', section)
+        courses += [c.strip() for c in raw_courses if 2 < len(c.strip()) < 50]
 
-def compare_and_score(keywords1, keywords2, weights):
+    # Clubs / Orgs
+    org_matches = re.findall(r'\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\b', text)
+    org_blacklist = {"Bachelor of Arts", "High School", "College Park", "New York", "Evanston"}
+    clubs = [org.strip() for org in org_matches if org not in org_blacklist]
+
+    # Dynamic Keywords (skills, tools, misc terms)
+    tokens = re.findall(r'\b[a-zA-Z][a-zA-Z\-]+\b', text_lower)
+    words = [t.strip() for t in tokens if 2 < len(t) < 30]
+    all_terms = list(set(words))
+
+    return {
+        "grad_year": grad_years,
+        "majors": flat_majors,
+        "courses": courses,
+        "clubs": clubs,
+        "terms": all_terms,
+        "full_text": text
+    }
+
+# === Compare and Score ===
+def compare_and_score(data1, data2, weights):
     score = 0.0
-    matches = {}
-    for cat, weight in weights.items():
-        shared = list(set(keywords1.get(cat, [])) & set(keywords2.get(cat, [])))
-        matches[cat] = shared
-        score += weight * len(shared)
-    return score, matches
+    report = {}
+    for key in weights:
+        shared = list(set(data1.get(key, [])) & set(data2.get(key, [])))
+        report[key] = shared
+        score += weights[key] * len(shared)
+    return score, report
 
-# --- Resume Paths ---
-pdf1 = "resume1.pdf"
-pdf2 = "resume2.pdf"
+# === Semantic Similarity ===
+def semantic_score(text1, text2):
+    embeddings = model.encode([text1, text2], convert_to_tensor=True)
+    return util.pytorch_cos_sim(embeddings[0], embeddings[1]).item()
 
-text1 = extract_pdf_text(pdf1)
-text2 = extract_pdf_text(pdf2)
+# === Main Comparison Function ===
+def compare_resumes(path1, path2):
+    text1 = extract_text(path1)
+    text2 = extract_text(path2)
 
-tokens1 = preprocess(text1)
-tokens2 = preprocess(text2)
+    data1 = extract_entities(text1)
+    data2 = extract_entities(text2)
 
-# --- Semantic Similarity ---
-embeddings = model.encode([text1, text2], convert_to_tensor=True)
-semantic_score = util.pytorch_cos_sim(embeddings[0], embeddings[1]).item()
+    weights = {
+        "grad_year": 3.0,
+        "majors": 2.5,
+        "courses": 1.75,
+        "clubs": 2.0,
+        "terms": 1.0
+    }
 
-# --- Automatic Feature Extraction ---
-tfidf_keywords1 = extract_keywords(text1)
-tfidf_keywords2 = extract_keywords(text2)
+    category_score, match_report = compare_and_score(data1, data2, weights)
+    sem_score = semantic_score(data1["full_text"], data2["full_text"])
 
-education1 = extract_education_info(text1)
-education2 = extract_education_info(text2)
+    total_score = 0.5 * sem_score + 0.5 * (category_score / 10.0)  # normalize for blended score
 
-affiliations1 = extract_affiliations(text1)
-affiliations2 = extract_affiliations(text2)
+    print("\n=== Resume Similarity Report ===\n")
+    print(f"Semantic Similarity: {sem_score:.4f}")
+    print(f"Category Match Score: {category_score:.2f}")
+    print(f"Final Combined Similarity Score: {total_score:.4f}\n")
 
-# --- Weighted Score ---
-weights = {
-    "tfidf": 1.0,
-    "grad_year": 3.0,
-    "majors": 2.5,
-    "affiliations": 2.0,
-}
+    for key, val in match_report.items():
+        if val:
+            print(f"- Shared {key.title()}: {', '.join(val)}")
 
-keywords1 = {
-    "tfidf": tfidf_keywords1,
-    "grad_year": education1["grad_year"],
-    "majors": education1["majors"],
-    "affiliations": affiliations1,
-}
+    return total_score
 
-keywords2 = {
-    "tfidf": tfidf_keywords2,
-    "grad_year": education2["grad_year"],
-    "majors": education2["majors"],
-    "affiliations": affiliations2,
-}
+# === Example Call ===
+# compare_resumes("Paari Dhanasekaran Resume.pdf", "Jain_Rishabh_Resume.pdf")
 
-weighted_score, category_matches = compare_and_score(keywords1, keywords2, weights)
-
-# --- Additional Overlap Analysis ---
-common_words = set(tokens1) & set(tokens2)
-fuzzy_overlap = [w1 for w1 in tokens1 for w2 in tokens2 if fuzz.partial_ratio(w1, w2) > 90]
-
-# --- Output ---
-print(f"=== Weighted Resume Score ===\n{weighted_score:.2f}\n")
-
-print("=== Shared Tokens ===")
-print(", ".join(sorted(common_words)))
-
-print("\n=== Fuzzy Matched Tokens ===")
-print(", ".join(sorted(set(fuzzy_overlap))))
-
-print("\n=== Inferred Category Matches ===")
-for cat, matches in category_matches.items():
-    print(f"- {cat.title()}: {', '.join(matches) if matches else 'None'}")
+if __name__ == "__main__":
+    compare_resumes("resume_paari.pdf", "resume_rishabh.pdf")
