@@ -55,8 +55,8 @@ similarity_matrix = util.pytorch_cos_sim(resume_embeddings, resume_embeddings).c
 # --- Step 7: Create graph edges from similarity matrix ---
 edges = []
 for i, j in itertools.combinations(range(len(members)), 2):
-    weight = similarity_matrix[i][j]
-    if weight > 0.5:
+    weight = 100 * similarity_matrix[i][j]
+    if weight > 0 and weight < 1:
         edges.append({
             "from": names[i],
             "to": names[j],
