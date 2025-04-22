@@ -1,9 +1,8 @@
 import fitz  # PyMuPDF
 import re
 import nltk
-import os
-from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
 from sentence_transformers import SentenceTransformer, util
 from fuzzywuzzy import fuzz
 
@@ -12,7 +11,8 @@ nltk.download('stopwords')
 stop_words = set(stopwords.words('english'))
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# === Extract Data from Resume ===
+# === Utility Functions ===
+
 def extract_text(path):
     try:
         with fitz.open(path) as doc:
@@ -21,47 +21,43 @@ def extract_text(path):
         print(f"Error reading {path}: {e}")
         return ""
 
-# === Entity Extraction ===
+def preprocess(text):
+    text = re.sub(r'[^a-zA-Z\s]', '', text.lower())
+    tokens = word_tokenize(text)
+    return [t for t in tokens if t not in stop_words and len(t) > 1]
+
 def extract_entities(text):
     text_lower = text.lower()
 
-    # Graduation Year
-    grad_years = re.findall(r'\bjun(?:e|\.|)\s*(20\d{2})', text_lower)
-
-    # Majors
+    # Extract majors from degree lines
     major_phrases = re.findall(r'bachelor.*?in ([a-z\s&]+)', text_lower)
     flat_majors = []
     for phrase in major_phrases:
         parts = re.split(r'and|&|,', phrase)
         flat_majors.extend([p.strip() for p in parts if p.strip()])
 
-    # Coursework
-    courses = []
-    coursework_sections = re.findall(r'relevant coursework:?([\s\S]{0,300})', text_lower)
-    for section in coursework_sections:
-        raw_courses = re.split(r',|\n|\u2022|-', section)
-        courses += [c.strip() for c in raw_courses if 2 < len(c.strip()) < 50]
+    # Extract graduation year
+    grad_years = re.findall(r'jun[ea]*\.*\s*(20\d{2})', text_lower)
 
-    # Clubs / Orgs
+    # === Dynamic Club Detection ===
+    # Get capitalized multi-word org names, skipping all-caps (like acronyms) and common words
     org_matches = re.findall(r'\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\b', text)
-    org_blacklist = {"Bachelor of Arts", "High School", "College Park", "New York", "Evanston"}
-    clubs = [org.strip() for org in org_matches if org not in org_blacklist]
+    org_blacklist = {"Bachelor of Arts", "High School", "College Park", "Evanston", "New York"}  # filter non-club stuff
+    clubs = [org for org in org_matches if org not in org_blacklist]
 
-    # Dynamic Keywords (skills, tools, misc terms)
-    tokens = re.findall(r'\b[a-zA-Z][a-zA-Z\-]+\b', text_lower)
-    words = [t.strip() for t in tokens if 2 < len(t) < 30]
-    all_terms = list(set(words))
+    # Extract common tools/languages/interests (you can expand these as needed)
+    skills = re.findall(r'\b(excel|factset|stata|pitchbook|html|python|sql)\b', text_lower)
+    interests = re.findall(r'\b(guitar|piano|basketball|falcons|birdwatching|biking|hiking|documentaries)\b', text_lower)
 
     return {
         "grad_year": grad_years,
         "majors": flat_majors,
-        "courses": courses,
         "clubs": clubs,
-        "terms": all_terms,
+        "skills": skills,
+        "interests": interests,
         "full_text": text
     }
 
-# === Compare and Score ===
 def compare_and_score(data1, data2, weights):
     score = 0.0
     report = {}
@@ -71,12 +67,12 @@ def compare_and_score(data1, data2, weights):
         score += weights[key] * len(shared)
     return score, report
 
-# === Semantic Similarity ===
 def semantic_score(text1, text2):
     embeddings = model.encode([text1, text2], convert_to_tensor=True)
     return util.pytorch_cos_sim(embeddings[0], embeddings[1]).item()
 
 # === Main Comparison Function ===
+
 def compare_resumes(path1, path2):
     text1 = extract_text(path1)
     text2 = extract_text(path2)
@@ -87,16 +83,15 @@ def compare_resumes(path1, path2):
     weights = {
         "grad_year": 3.0,
         "majors": 2.5,
-        "courses": 1.75,
         "clubs": 2.0,
-        "terms": 1.0
+        "skills": 1.5,
+        "interests": 1.0
     }
 
     category_score, match_report = compare_and_score(data1, data2, weights)
     sem_score = semantic_score(data1["full_text"], data2["full_text"])
 
-    total_score = 0.5 * sem_score + 0.5 * (category_score / 10.0)  # normalize for blended score
-
+    total_score = 0.5 * sem_score + 0.5 * (category_score / 10.0)  # normalize weights
     print("\n=== Resume Similarity Report ===\n")
     print(f"Semantic Similarity: {sem_score:.4f}")
     print(f"Category Match Score: {category_score:.2f}")
@@ -105,14 +100,7 @@ def compare_resumes(path1, path2):
     for key, val in match_report.items():
         if val:
             print(f"- Shared {key.title()}: {', '.join(val)}")
-
     return total_score
 
-# === Example Call ===
-# compare_resumes("Paari Dhanasekaran Resume.pdf", "Jain_Rishabh_Resume.pdf")
-
 if __name__ == "__main__":
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    resume1 = os.path.join(base_dir, "resumes", "resume_john.pdf")
-    resume2 = os.path.join(base_dir, "resumes", "resume_steve.pdf")
-    compare_resumes(resume1, resume2)
+    compare_resumes("resumes/resume_paari.pdf", "resumes/resume_rishabh.pdf")
