@@ -13,7 +13,7 @@ nltk.download('stopwords')
 # Initialize stopwords
 stop_words = set(stopwords.words('english'))
 
-# Sample resumes (can be replaced with actual content)
+# Sample resumes
 resume1 = """
 Software engineer with experience in backend development using Python, Flask, and PostgreSQL.
 Previously worked at Google and contributed to scalable microservices architecture.
