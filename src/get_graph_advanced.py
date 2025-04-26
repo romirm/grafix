@@ -15,7 +15,7 @@ nltk.download('stopwords')
 stop_words = set(stopwords.words('english'))
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# === Utility Functions ===
+
 def extract_text(path):
     try:
         with fitz.open(path) as doc:
