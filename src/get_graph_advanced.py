@@ -9,6 +9,7 @@ import json
 import itertools
 import requests
 from io import BytesIO
+import os
 
 nltk.download('punkt')
 nltk.download('stopwords')
