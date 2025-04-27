@@ -66,3 +66,5 @@ for i, j in itertools.combinations(range(len(members)), 2):
 with open('edges.json', 'w', encoding='utf-8') as f:
     json.dump(edges, f, indent=2)
 print("Edges saved")
+
+# Updated to use OPEN AI
