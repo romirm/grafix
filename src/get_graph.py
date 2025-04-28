@@ -19,7 +19,7 @@ for uid, data in raw_data.items():
         "resume_link": data.get("resume_link", "")
     })
 
-# --- Step 3: Create graph nodes from member info ---
+# --- Step 3: Create graph nodes ---
 nodes = [{
     "name": m["name"],
     "image": m["profile_pic"],
@@ -38,7 +38,6 @@ def extract_pdf_text(url, name):
         with fitz.open(stream=response.content, filetype="pdf") as doc:
             return " ".join(page.get_text() for page in doc)
     except Exception as e:
-        print(f"Failed to read for {name}, {e}")
         return ""
 
 resume_texts = [extract_pdf_text(m["resume_link"], m["name"]) for m in members]
@@ -66,5 +65,4 @@ for i, j in itertools.combinations(range(len(members)), 2):
 with open('edges.json', 'w', encoding='utf-8') as f:
     json.dump(edges, f, indent=2)
 print("Edges saved")
-
-# Updated to use OPEN AI
+[]
