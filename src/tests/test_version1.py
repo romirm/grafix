@@ -16,12 +16,12 @@ stop_words = set(stopwords.words('english'))
 # Sample resumes
 resume1 = """
 Software engineer with experience in backend development using Python, Flask, and PostgreSQL.
-Previously worked at Google and contributed to scalable microservices architecture.
+Previously worked at Google and contributed to scalable microservices architecture. Interested in financial technologies.
 """
 
 resume2 = """
 Backend developer skilled in Python, Django, and relational databases like MySQL and PostgreSQL.
-Built systems at Meta and focused on clean API design and scalable services.
+Built systems at Meta and focused on clean API design and scalable services. Interested in fintech.
 """
 
 # Step 1: Preprocess and extract overlapping terms
