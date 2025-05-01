@@ -1,0 +1,51 @@
+{
+  "full_name": "Romir Mohan",
+  "graduation_year": 2028,
+  "majors": [
+    "Computer Science",
+    "Mathematics"
+  ],
+  "experiences": [
+    "Northwestern Financial Technologies",
+    "Mercor",
+    "Florida State Senate Campaign",
+    "Mu Alpha Theta"
+  ],
+  "skills": [
+    "Bash",
+    "C",
+    "C++",
+    "CSS",
+    "HTML",
+    "Java",
+    "JavaScript",
+    "LATEX",
+    "Python",
+    "SQL",
+    "R",
+    "Racket",
+    "Rust",
+    "TypeScript",
+    "APIs",
+    "Cloud Infrastructure",
+    "Flask",
+    "Make",
+    "Node.js",
+    "Numpy",
+    "OpenAI Platform",
+    "Pandas",
+    "React",
+    "UNIX",
+    "AWS",
+    "Firebase",
+    "GDB",
+    "Git",
+    "GitHub + Actions",
+    "Microsoft Tools",
+    "SSH",
+    "Valgrind",
+    "Vim",
+    "VS Code"
+  ],
+  "interests": []
+}

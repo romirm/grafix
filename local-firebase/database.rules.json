@@ -1,0 +1,37 @@
+{
+  "rules": {
+    "users": {
+      "$user_id": {
+        ".read":"$user_id === auth.uid",
+        "admin": {
+          ".write":false
+        },
+        "$child": {
+          ".write": "$user_id === auth.uid && $child != 'admin'"
+        }
+      }
+    },
+    "allowed_users": {
+      "$user_id": {
+        ".write": "root.child('users').child(auth.uid).child('admin').val() === true",
+        ".read": false
+      }
+    },
+    "public_users": {
+      "$user_id": {
+        ".write": "$user_id === auth.uid"
+      },
+      ".read": "auth.uid != null"
+    },
+    "leetcode_offsets": {
+      "$user_id": {
+        ".write": false,
+        ".read": "auth.uid != null"
+      }
+    },
+    "announcements": {
+      ".write": false,
+      ".read": "auth.uid != null"
+    }
+  }
+}

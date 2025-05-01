@@ -3,6 +3,8 @@ import google.generativeai as genai
 import json
 from dotenv import load_dotenv
 import os
+import re
+from difflib import SequenceMatcher
 
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
@@ -24,6 +26,8 @@ def extract_text(path):
         print(f"Error reading {path}: {e}")
         return ""
 
+
+
 # === Step 2: Call Gemini API to extract structured info ===
 def extract_resume_entities(text):
     prompt = f"""
@@ -33,19 +37,35 @@ def extract_resume_entities(text):
     - graduation_year (string or int)
     - majors (list of strings)
     - experiences (list of org names, especially internships and clubs)
-    - skills (list of tools/languages)
-    - interests (list of topics or hobbies)
+    - skills (list of tools/languages — deduplicated)
+    - interests (list of topics or hobbies, leave empty if none are listed)
+
+    IMPORTANT:
+    - Only include each key once in the final JSON.
+    - Do not repeat fields like "skills".
+    - Ensure the output is valid JSON, not Markdown or wrapped in triple backticks.
+    - Only output the json, no other labels.
 
     Resume:
     {text}
     """
     response = model.generate_content(prompt)
+    raw_text = response.text.strip()
+
+    # Remove Markdown wrapping like ```json and ```
+    if raw_text.startswith("```json"):
+        raw_text = raw_text[7:]
+    if raw_text.startswith("```"):
+        raw_text = raw_text[3:]
+    if raw_text.endswith("```"):
+        raw_text = raw_text[:-3]
+
     try:
-        return json.loads(response.text)
-    except json.JSONDecodeError:
+        return json.loads(raw_text)
+    except json.JSONDecodeError as e:
         print("Gemini output could not be parsed. Raw output:")
-        print(response.text)
-        return {}
+        print(raw_text)
+        raise ValueError(f"Failed to parse JSON: {e}")
 
 # === Step 3: Search Index Compatibility ===
 def profile_contains_term(profile, term):
@@ -56,24 +76,61 @@ def profile_contains_term(profile, term):
         for value in profile.get(field, [])
     )
 
+# === Step 4: Check for similarities in sets ===
+def fuzzy_match(set1, set2, threshold=0.6):
+    matches = set()
+    for a in set1:
+        for b in set2:
+            if SequenceMatcher(None, a.lower(), b.lower()).ratio() > threshold:
+                matches.add((a, b))
+    return matches
+
 # === Step 4: Vectorized Similarity ===
 def resume_similarity(profile1, profile2):
-    prompt = f"""
-    Given these two resumes, return a similarity score from 0 to 1. 
-    Give more weight to shared internships, clubs, graduation year, and majors. 
-    
-    Resume A: {json.dumps(profile1)}
-    Resume B: {json.dumps(profile2)}
-    
-    Respond only with a float between 0 and 1.
-    """
-    response = model.generate_content(prompt)
-    try:
-        return float(response.text.strip())
-    except ValueError:
-        print("Could not parse similarity score. Raw response:")
-        print(response.text)
-        return 0.0
+    # Convert string "N/A" or empty lists to empty sets
+    majors1 = set(profile1.get("majors", []))
+    majors2 = set(profile2.get("majors", []))
+    skills1 = set(profile1.get("skills", []))
+    skills2 = set(profile2.get("skills", []))
+    exp1 = set(profile1.get("experiences", []))
+    exp2 = set(profile2.get("experiences", []))
+    interests1 = set(profile1.get("interests", [])) if isinstance(profile1.get("interests"), list) else set()
+    interests2 = set(profile2.get("interests", [])) if isinstance(profile2.get("interests"), list) else set()
+
+    # Set-based intersections
+    common_majors = majors1 & majors2
+    common_skills = skills1 & skills2
+    common_interests = interests1 & interests2
+
+    # Fuzzy match for experiences
+    fuzzy_experiences = fuzzy_match(exp1, exp2)
+    common_experience_count = len(fuzzy_experiences)
+
+    # Weighted score (tune weights as needed)
+    score = (
+        1.0 * len(common_majors) +
+        1.0 * len(common_skills) +
+        1.5 * common_experience_count +
+        0.5 * len(common_interests)
+    )
+    max_score = (
+        1.0 * max(len(majors1), len(majors2), 1) +
+        1.0 * max(len(skills1), len(skills2), 1) +
+        1.5 * max(len(exp1), len(exp2), 1) +
+        0.5 * max(len(interests1), len(interests2), 1)
+    )
+
+    similarity_score = round(score / max_score, 4)
+
+    # Optional: Print debug info
+    print("=== Resume Similarity Report ===")
+    print("Common Majors:", common_majors)
+    print("Common Skills:", common_skills)
+    print("Fuzzy Experience Matches:", fuzzy_experiences)
+    print("Common Interests:", common_interests)
+    print("Final Similarity Score:", similarity_score)
+
+    return similarity_score
 
 # === Main Function ===
 def compare_resumes(path1, path2):
@@ -82,6 +139,17 @@ def compare_resumes(path1, path2):
 
     profile1 = extract_resume_entities(text1)
     profile2 = extract_resume_entities(text2)
+
+    # Save JSON outputs
+    with open("parsed_resume_1.json", "w") as f:
+        json.dump(profile1, f, indent=2)
+    with open("parsed_resume_2.json", "w") as f:
+        json.dump(profile2, f, indent=2)
+
+    print("\n=== Parsed Resume 1 ===")
+    print(json.dumps(profile1, indent=2))
+    print("\n=== Parsed Resume 2 ===")
+    print(json.dumps(profile2, indent=2))
 
     sim = resume_similarity(profile1, profile2)
 
@@ -92,5 +160,7 @@ def compare_resumes(path1, path2):
     print(f"Common Interests: {set(profile1.get('interests', [])) & set(profile2.get('interests', []))}")
     return sim
 
+
+
 if __name__ == "__main__":
-    compare_resumes("resume_paari.pdf", "resume_rishabh.pdf")
+    compare_resumes("resumes/resume_romir.pdf", "resumes/resume_john.pdf")
