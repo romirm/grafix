@@ -102,11 +102,9 @@ def resume_similarity(profile1, profile2):
     common_skills = skills1 & skills2
     common_interests = interests1 & interests2
 
-    # Fuzzy match for experiences
     fuzzy_experiences = fuzzy_match(exp1, exp2)
     common_experience_count = len(fuzzy_experiences)
 
-    # Weighted score (tune weights as needed)
     score = (
         1.0 * len(common_majors) +
         1.0 * len(common_skills) +
