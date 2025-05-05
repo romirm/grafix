@@ -153,9 +153,9 @@ def compare_resumes(path1, path2):
 
     print("\n=== Resume Similarity Report ===\n")
     print(f"Final Similarity Score: {sim:.4f}")
-    print(f"Common Experiences: {set(profile1.get('experiences', [])) & set(profile2.get('experiences', []))}")
-    print(f"Common Majors: {set(profile1.get('majors', [])) & set(profile2.get('majors', []))}")
-    print(f"Common Interests: {set(profile1.get('interests', [])) & set(profile2.get('interests', []))}")
+    print(f"Experiences: {set(profile1.get('experiences', [])) & set(profile2.get('experiences', []))}")
+    print(f"Majors: {set(profile1.get('majors', [])) & set(profile2.get('majors', []))}")
+    print(f"Interests: {set(profile1.get('interests', [])) & set(profile2.get('interests', []))}")
     return sim
 
 
