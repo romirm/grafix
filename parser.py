@@ -111,7 +111,7 @@ def resume_similarity(profile1, profile2):
         1.5 * common_experience_count +
         0.5 * len(common_interests)
     )
-    max_score = (
+    max_score = (k
         1.0 * max(len(majors1), len(majors2), 1) +
         1.0 * max(len(skills1), len(skills2), 1) +
         1.5 * max(len(exp1), len(exp2), 1) +
@@ -161,4 +161,4 @@ def compare_resumes(path1, path2):
 
 
 if __name__ == "__main__":
-    compare_resumes("resumes/resume_steve.pdf", "resumes/resume_johnromir.pdf")
+    compare_resumes("resumes/resume_steve.pdf", "resumes/resume_john.pdf")
