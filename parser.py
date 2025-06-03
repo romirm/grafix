@@ -161,4 +161,4 @@ def compare_resumes(path1, path2):
 
 
 if __name__ == "__main__":
-    compare_resumes("resumes/resume_steve.pdf", "resumes/resume_john.pdf")
+    compare_resumes("resumes/resume_john.pdf", "resumes/resume_john.pdf")
