@@ -7,12 +7,6 @@ A web app that uses Google's Gemini API to parse through student information and
 * [![Firebase][Firebase]][Firebase-url]
 * [![Gemini][Gemini]][Gemini-url]
 
-<!-- Badge References -->
-
-<!-- React -->
-[React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
-[React-url]: https://reactjs.org/
-
 <!-- Gemini -->
 [Gemini]: https://img.shields.io/badge/Gemini%20API-4285F4?style=for-the-badge&logo=google&logoColor=white
 [Gemini-url]: https://ai.google.dev/
