@@ -13,8 +13,6 @@ A web app that uses Google's Gemini API to parse through student information and
 
 ---
 
-## 🛠️ Setup Instructions
-
 ### 1. Clone the repo
 
 ```bash
