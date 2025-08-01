@@ -13,7 +13,7 @@ A web app that uses Google's Gemini API to parse through student information and
 
 ---
 
-### 1. Clone the repo
+### 1. Clone
 
 ```bash
 git clone https://github.com/your-username/aptly.git
