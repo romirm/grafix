@@ -1,5 +1,5 @@
 # Grafix 
-A web app that uses Google's Gemini API to parse through student information and generate an interactive web graph. Made for KTP by Romir Mohan.
+A web app that uses Google's Gemini API to parse through student information and generate an interactive graph. Made for KTP by Romir Mohan.
 
 ## 🚧 Built With
 
@@ -74,3 +74,4 @@ Make sure `dist/` is your public directory and that Firebase is configured for s
 
 ## 🤝 Contributions
 Feel free to fork!
+
