@@ -1,5 +1,4 @@
 # Grafix 
-A web app that uses Google's Gemini API to generate a student graph
 
 ## 🚧 Built With
 
@@ -74,6 +73,7 @@ Make sure `dist/` is your public directory and that Firebase is configured for s
 
 ## 🤝 Contributions
 Feel free to fork!
+
 
 
 
