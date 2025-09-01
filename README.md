@@ -1,5 +1,7 @@
 # Grafix 
 
+Social Graph
+
 ## 🚧 Built With
 
 * [![React][React.js]][React-url]
@@ -73,6 +75,7 @@ Make sure `dist/` is your public directory and that Firebase is configured for s
 
 ## 🤝 Contributions
 Feel free to fork!
+
 
 
 
