@@ -1,6 +1,6 @@
 # Grafix 
 
-Social Graph
+Social Graph for people
 
 ## 🚧 Built With
 
@@ -75,6 +75,7 @@ Make sure `dist/` is your public directory and that Firebase is configured for s
 
 ## 🤝 Contributions
 Feel free to fork!
+
 
 
 
